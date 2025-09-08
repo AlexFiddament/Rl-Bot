@@ -3,6 +3,9 @@ from rlgym.api import RewardFunction, AgentID
 from rlgym.rocket_league.api import GameState
 from rlgym.rocket_league import common_values
 import numpy as np
+from typing import Dict, Any
+from rlgym.api import ActionParser, AgentID
+from gym import spaces
 
 
 class SpeedTowardBallReward(RewardFunction[AgentID, GameState, float]):
@@ -65,3 +68,28 @@ class VelocityBallToGoalReward(RewardFunction[AgentID, GameState, float]):
             vel_toward_goal = np.dot(ball_vel, dir_to_goal)
             rewards[agent] = max(vel_toward_goal / common_values.BALL_MAX_SPEED, 0)
         return rewards
+
+
+class ContinuousAction(ActionParser[AgentID, np.ndarray, np.ndarray, GameState, int]):
+    def __init__(self):
+        super().__init__()
+        self._n_controller_inputs = 8
+
+    def get_action_space(self, agent=None):
+        # Return 8 actions, type=1 for continuous
+        return self._n_controller_inputs, 1
+
+    def reset(self, agents, state, shared_info):
+        pass
+
+    def parse_actions(self, actions: Dict[AgentID, np.ndarray], state: GameState, shared_info: Dict[str, Any]):
+        parsed_actions = {}
+        for agent, action in actions.items():
+            car_controls = np.zeros((1, self._n_controller_inputs), dtype=np.float32)
+            car_controls[0, :] = action[:]
+            # Last 3 are binary
+            car_controls[0, -3:] = np.round((car_controls[0, -3:] + 1) / 2)
+            parsed_actions[agent] = car_controls
+        return parsed_actions
+
+
