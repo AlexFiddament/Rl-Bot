@@ -9,6 +9,8 @@ from rlgym.api import ObsBuilder, AgentID
 from rlgym.rocket_league.api import GameState, Car
 from rlgym.rocket_league.common_values import BLUE_TEAM
 from typing import List, Dict, Any
+from gym import spaces
+from gymnasium.spaces import Box
 
 
 class SpeedTowardBallReward(RewardFunction[AgentID, GameState, float]):
@@ -79,21 +81,36 @@ class ContinuousAction(ActionParser[AgentID, np.ndarray, np.ndarray, GameState, 
         self._n_controller_inputs = 8
 
     def get_action_space(self, agent=None):
-        # Return 8 actions, type=1 for continuous
+        # Number of continuous actions, type=1
         return self._n_controller_inputs, 1
 
     def reset(self, agents, state, shared_info):
         pass
 
-    def parse_actions(self, actions: Dict[AgentID, np.ndarray], state: GameState, shared_info: Dict[str, Any]):
+    def parse_actions(self, actions: dict, state, shared_info):
         parsed_actions = {}
         for agent, action in actions.items():
-            car_controls = np.zeros((1, self._n_controller_inputs), dtype=np.float32)
-            car_controls[0, :] = action[:]
-            # Last 3 are binary
-            car_controls[0, -3:] = np.round((car_controls[0, -3:] + 1) / 2)
-            parsed_actions[agent] = car_controls
+            # Ensure action is length 8
+            action = np.array(action, dtype=np.float32).flatten()
+            if action.shape[0] != self._n_controller_inputs:
+                # Fill with random values if wrong shape
+                action = np.random.uniform(-1, 1, self._n_controller_inputs)
+
+            # Last 3 are binary buttons
+            action[-3:] = np.round((action[-3:] + 1) / 2)
+
+            parsed_actions[agent] = action.reshape(1, self._n_controller_inputs)  # shape (1, 8)
+
         return parsed_actions
+
+
+            
+
+
+
+
+
+
 
 class RichObsBuilder(ObsBuilder):
     def get_obs_space(self, agent: AgentID):
@@ -153,3 +170,86 @@ class RichObsBuilder(ObsBuilder):
             opp_features = np.zeros(5)
 
         return np.concatenate([ball_features, agent_features, opp_features])
+
+
+
+
+
+
+
+
+
+import numpy as np
+from gym import spaces
+
+import numpy as np
+from gym import spaces
+
+class ContinuousRLGymWrapper:
+    """
+    Wrapper for RLGymV2 that:
+    - Returns consistent observation shapes
+    - Handles continuous actions
+    - Sanitizes obs & rewards to prevent NaNs/Infs
+    """
+
+    def __init__(self, rlgym_env):
+        self.rlgym_env = rlgym_env
+
+        # Reset to get agent IDs and example obs
+        obs_dict = self.rlgym_env.reset()
+        self.agent_ids = list(obs_dict.keys())
+        first_obs = obs_dict[self.agent_ids[0]]
+
+        # Observation space (numeric only)
+        self.observation_space = spaces.Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=first_obs.shape,
+            dtype=np.float32
+        )
+
+        # Continuous action space (Throttle, steer, pitch, yaw, roll, jump, boost, handbrake)
+        self.action_space = spaces.Box(
+            low=-1.0,
+            high=1.0,
+            shape=(8,),
+            dtype=np.float32
+        )
+
+    def reset(self):
+        obs_dict = self.rlgym_env.reset()
+        self.agent_ids = list(obs_dict.keys())
+
+        # Stack observations safely and sanitize
+        obs = np.array([np.nan_to_num(obs_dict[aid], nan=0.0, posinf=1e6, neginf=-1e6)
+                        for aid in self.agent_ids], dtype=np.float32)
+        return obs
+
+    def step(self, actions):
+        """
+        actions: np.array of shape (num_agents, 8)
+        Returns: obs, rewards, done_flag, infos
+        """
+        # Map actions to agent IDs
+        action_dict = {aid: actions[i] for i, aid in enumerate(self.agent_ids)}
+        obs_dict, reward_dict, done_dict, info_dict = self.rlgym_env.step(action_dict)
+
+        # Convert to arrays and sanitize
+        obs = np.array([np.nan_to_num(obs_dict[aid], nan=0.0, posinf=1e6, neginf=-1e6)
+                        for aid in self.agent_ids], dtype=np.float32)
+        rewards = np.array([np.nan_to_num(reward_dict[aid], nan=0.0, posinf=10.0, neginf=-10.0)
+                            for aid in self.agent_ids], dtype=np.float32)
+        rewards = np.clip(rewards, -10.0, 10.0)  # optional: prevent spikes
+        dones = np.array([done_dict[aid] for aid in self.agent_ids], dtype=bool)
+        done_flag = dones.any()
+        infos = [info_dict[aid] for aid in self.agent_ids]
+
+        return obs, rewards, done_flag, infos
+
+    def close(self):
+        if hasattr(self.rlgym_env, "close"):
+            self.rlgym_env.close()
+
+
+
