@@ -1,0 +1,101 @@
+_wandb:
+    value:
+        cli_version: 0.21.3
+        e:
+            ucs46258b3qxlhit87moroh9j3w3y1vc:
+                codePath: Main.py
+                codePathLocal: Main.py
+                cpu_count: 12
+                cpu_count_logical: 24
+                cudaVersion: "13.0"
+                disk:
+                    /:
+                        total: "998312505344"
+                        used: "949879459840"
+                email: alexfiddament@hotmail.co.uk
+                executable: C:\Program Files\Python311\python.exe
+                git:
+                    commit: 272a100191d446467ccd876f22ee37d772891111
+                    remote: https://github.com/AlexFiddament/Rl-Bot.git
+                gpu: NVIDIA GeForce RTX 3080 Ti
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ampere
+                      cudaCores: 10240
+                      memoryTotal: "12884901888"
+                      name: NVIDIA GeForce RTX 3080 Ti
+                      uuid: GPU-e78abcbb-9a56-fa8b-1a60-073461fe3a5b
+                host: DESKTOP-I37B5TB
+                memory:
+                    total: "17101111296"
+                os: Windows-10-10.0.26100-SP0
+                program: C:\Users\alexf\Documents\PythonProjects\PythonProject\Main.py
+                python: CPython 3.11.9
+                root: C:\Users\alexf\Documents\PythonProjects\PythonProject
+                startedAt: "2025-09-09T02:27:10.005805Z"
+                writerId: ucs46258b3qxlhit87moroh9j3w3y1vc
+        m: []
+        python_version: 3.11.9
+        t:
+            "1":
+                - 1
+            "2":
+                - 1
+            "3":
+                - 2
+                - 13
+                - 16
+            "4": 3.11.9
+            "5": 0.21.3
+            "8":
+                - 3
+            "10":
+                - 20
+            "12": 0.21.3
+            "13": windows-amd64
+critic_layer_sizes:
+    value:
+        - 2048
+        - 2048
+        - 1024
+        - 1024
+critic_lr:
+    value: 0.0001
+exp_buffer_size:
+    value: 300000
+gae_gamma:
+    value: 0.99
+gae_lambda:
+    value: 0.95
+min_inference_size:
+    value: 22
+n_proc:
+    value: 25
+policy_layer_sizes:
+    value:
+        - 2048
+        - 2048
+        - 1024
+        - 1024
+policy_lr:
+    value: 0.0001
+ppo_batch_size:
+    value: 100000
+ppo_clip_range:
+    value: 0.2
+ppo_ent_coef:
+    value: 0.1
+ppo_epochs:
+    value: 2
+ppo_minibatch_size:
+    value: 50000
+shm_buffer_size:
+    value: 8192
+standardize_obs:
+    value: false
+standardize_returns:
+    value: true
+timestep_limit:
+    value: 1000000000
+ts_per_iteration:
+    value: 100000

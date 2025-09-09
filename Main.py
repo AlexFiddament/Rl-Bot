@@ -15,6 +15,7 @@ def build_rlgym_v2_env():
     from rlgym.rocket_league.state_mutators import MutatorSequence, FixedTeamSizeMutator, KickoffMutator
     from rlgym.rocket_league import common_values
     from rlgym_ppo.util import RLGymV2GymWrapper
+    import random
 
     spawn_opponents = True
     team_size = 1
@@ -55,11 +56,10 @@ def build_rlgym_v2_env():
         transition_engine=RocketSimEngine()
     )
 
-    obs = rlgym_env.reset()
 
-    first_agent = list(obs.keys())[0]  # grab whatever agent ID exists
-    print("Raw observation shape for agent:", obs[first_agent].shape)
-    print("Raw observation sample:", obs[first_agent])
+
+
+
 
     return RLGymV2GymWrapper(rlgym_env)
 
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
 
     # 32 processes
-    n_proc = 1
+    n_proc = 25
 
     # educated guess - could be slightly higher or lower
     min_inference_size = max(1, int(round(n_proc * 0.9)))
@@ -85,7 +85,7 @@ if __name__ == "__main__":
                       ts_per_iteration=100_000,  # timesteps per training iteration - set this equal to the batch size
                       exp_buffer_size=300_000,  # size of experience buffer - keep this 2 - 3x the batch size
                       ppo_minibatch_size=50_000,  # minibatch size - set this as high as your GPU can handle
-                      ppo_ent_coef=0.01,  # entropy coefficient - this determines the impact of exploration
+                      ppo_ent_coef=0.1,  # entropy coefficient - this determines the impact of exploration
                       policy_lr=1e-4,  # policy learning rate
                       critic_lr=1e-4,  # critic learning rate
                       ppo_epochs=2,   # number of PPO epochs
@@ -95,5 +95,8 @@ if __name__ == "__main__":
                       timestep_limit=1_000_000_000,  # Train for 1B steps
                       log_to_wandb=True # Set this to True if you want to use Weights & Biases for logging.
                       )
-    learner.learn()
+    try:
+        learner.learn()
+    except KeyboardInterrupt:
+        print("Training stopped by user") # ctrl c
 
