@@ -5,7 +5,7 @@ def build_rlgym_v2_env():
     from BotParameters import VelocityBallToGoalReward
     from BotParameters import SpeedTowardBallReward
     from BotParameters import ContinuousAction
-    import numpy as np
+    from BotParameters import RichObsBuilder
     from rlgym.api import RLGym
     from rlgym.rocket_league.action_parsers import LookupTableAction, RepeatAction
     from rlgym.rocket_league.done_conditions import GoalCondition, NoTouchTimeoutCondition, TimeoutCondition, AnyCondition
@@ -38,14 +38,7 @@ def build_rlgym_v2_env():
         (GoalReward(), 10.0)
     )
 
-    obs_builder = DefaultObs(zero_padding=None,
-                           pos_coef=np.asarray([1 / common_values.SIDE_WALL_X,
-                                              1 / common_values.BACK_NET_Y,
-                                              1 / common_values.CEILING_Z]),
-                           ang_coef=1 / np.pi,
-                           lin_vel_coef=1 / common_values.CAR_MAX_SPEED,
-                           ang_vel_coef=1 / common_values.CAR_MAX_ANG_VEL,
-                           boost_coef=1 / 100.0)
+    obs_builder = RichObsBuilder()
 
     state_mutator = MutatorSequence(
         FixedTeamSizeMutator(blue_size=blue_team_size, orange_size=orange_team_size),
@@ -62,7 +55,11 @@ def build_rlgym_v2_env():
         transition_engine=RocketSimEngine()
     )
 
+    obs = rlgym_env.reset()
 
+    first_agent = list(obs.keys())[0]  # grab whatever agent ID exists
+    print("Raw observation shape for agent:", obs[first_agent].shape)
+    print("Raw observation sample:", obs[first_agent])
 
     return RLGymV2GymWrapper(rlgym_env)
 
@@ -70,6 +67,7 @@ def build_rlgym_v2_env():
 if __name__ == "__main__":
 
     from rlgym_ppo import Learner
+
 
     # 32 processes
     n_proc = 1

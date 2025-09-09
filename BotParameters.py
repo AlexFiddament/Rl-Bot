@@ -5,7 +5,10 @@ from rlgym.rocket_league import common_values
 import numpy as np
 from typing import Dict, Any
 from rlgym.api import ActionParser, AgentID
-from gym import spaces
+from rlgym.api import ObsBuilder, AgentID
+from rlgym.rocket_league.api import GameState, Car
+from rlgym.rocket_league.common_values import BLUE_TEAM
+from typing import List, Dict, Any
 
 
 class SpeedTowardBallReward(RewardFunction[AgentID, GameState, float]):
@@ -92,4 +95,61 @@ class ContinuousAction(ActionParser[AgentID, np.ndarray, np.ndarray, GameState, 
             parsed_actions[agent] = car_controls
         return parsed_actions
 
+class RichObsBuilder(ObsBuilder):
+    def get_obs_space(self, agent: AgentID):
+        # Total number of features in your observation
+        return 'real', 31
 
+    def reset(self, agents: List[AgentID], initial_state: GameState, shared_info: Dict):
+        pass
+
+    def build_obs(self, agents: List[AgentID], state: GameState, shared_info: Dict) -> Dict[AgentID, np.ndarray]:
+        obs = {}
+        for agent in agents:
+            obs[agent] = self._build_obs(agent, state)
+        return obs
+
+    def _build_obs(self, agent: AgentID, state: GameState) -> np.ndarray:
+        car = state.cars[agent]
+        if car.team_num == BLUE_TEAM:
+            agent_phys = car.physics
+            ball = state.ball
+            opponents = [c for i, c in state.cars.items() if c.team_num != BLUE_TEAM]
+        else:
+            agent_phys = car.inverted_physics
+            ball = state.inverted_ball
+            opponents = [c.inverted_physics for i, c in state.cars.items() if c.team_num == BLUE_TEAM]
+
+        # Ball features
+        ball_features = np.concatenate([ball.position, ball.linear_velocity, ball.angular_velocity])
+
+        # Agent car features
+        agent_features = np.concatenate([
+            agent_phys.position,
+            agent_phys.forward,
+            agent_phys.up,
+            agent_phys.linear_velocity,
+            agent_phys.angular_velocity,
+            [car.boost_amount]  # make sure 'boost' exists in Car class
+        ])
+
+        # Opponent cars (keep full Car object)
+        opponents = [c for i, c in state.cars.items() if c.team_num != BLUE_TEAM]
+
+        # Then when building features:
+        if len(opponents) > 0:
+            opp_car = opponents[0]
+            # Use inverted_physics if needed
+            if car.team_num != BLUE_TEAM:
+                opp_phys = opp_car.inverted_physics
+            else:
+                opp_phys = opp_car.physics
+
+            opp_features = np.concatenate([
+                opp_phys.position - agent_phys.position,  # relative position
+                opp_phys.linear_velocity
+            ])
+        else:
+            opp_features = np.zeros(5)
+
+        return np.concatenate([ball_features, agent_features, opp_features])
