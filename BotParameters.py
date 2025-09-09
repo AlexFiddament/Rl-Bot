@@ -179,37 +179,27 @@ class RichObsBuilder(ObsBuilder):
 
 
 
-import numpy as np
-from gym import spaces
-
-import numpy as np
-from gym import spaces
-
 class ContinuousRLGymWrapper:
     """
-    Wrapper for RLGymV2 that:
-    - Returns consistent observation shapes
-    - Handles continuous actions
-    - Sanitizes obs & rewards to prevent NaNs/Infs
+    Wraps an RLGymV2 environment for continuous actions and PPO usage.
+    Exposes proper observation_space and action_space for SB3/RLlib.
     """
-
     def __init__(self, rlgym_env):
         self.rlgym_env = rlgym_env
 
-        # Reset to get agent IDs and example obs
-        obs_dict = self.rlgym_env.reset()
-        self.agent_ids = list(obs_dict.keys())
-        first_obs = obs_dict[self.agent_ids[0]]
+        # Reset environment to get an example observation
+        obs_example = list(self.rlgym_env.reset().values())[0]  # take first agent
+        self.num_agents = len(self.rlgym_env.reward_fn.reward_fns)  # approximate, or just len(obs_dict)
 
-        # Observation space (numeric only)
+        # Observation space: assume all agents have the same shape
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=first_obs.shape,
+            shape=obs_example.shape,
             dtype=np.float32
         )
 
-        # Continuous action space (Throttle, steer, pitch, yaw, roll, jump, boost, handbrake)
+        # Action space: 8 continuous actions per agent
         self.action_space = spaces.Box(
             low=-1.0,
             high=1.0,
@@ -218,36 +208,33 @@ class ContinuousRLGymWrapper:
         )
 
     def reset(self):
-        obs_dict = self.rlgym_env.reset()
+        """
+        Reset the environment and return a stacked array of observations for all agents.
+        """
+        obs_dict = self.rlgym_env.reset()  # dict: agent_id -> obs
         self.agent_ids = list(obs_dict.keys())
-
-        # Stack observations safely and sanitize
-        obs = np.array([np.nan_to_num(obs_dict[aid], nan=0.0, posinf=1e6, neginf=-1e6)
-                        for aid in self.agent_ids], dtype=np.float32)
-        return obs
+        return np.array([obs_dict[aid] for aid in self.agent_ids], dtype=np.float32)
 
     def step(self, actions):
         """
-        actions: np.array of shape (num_agents, 8)
-        Returns: obs, rewards, done_flag, infos
+        Take a step in the environment.
+        `actions` is expected to be shape (num_agents, 8)
         """
-        # Map actions to agent IDs
         action_dict = {aid: actions[i] for i, aid in enumerate(self.agent_ids)}
         obs_dict, reward_dict, done_dict, info_dict = self.rlgym_env.step(action_dict)
 
-        # Convert to arrays and sanitize
-        obs = np.array([np.nan_to_num(obs_dict[aid], nan=0.0, posinf=1e6, neginf=-1e6)
-                        for aid in self.agent_ids], dtype=np.float32)
-        rewards = np.array([np.nan_to_num(reward_dict[aid], nan=0.0, posinf=10.0, neginf=-10.0)
-                            for aid in self.agent_ids], dtype=np.float32)
-        rewards = np.clip(rewards, -10.0, 10.0)  # optional: prevent spikes
+        obs = np.array([obs_dict[aid] for aid in self.agent_ids], dtype=np.float32)
+        rewards = np.array([reward_dict[aid] for aid in self.agent_ids], dtype=np.float32)
         dones = np.array([done_dict[aid] for aid in self.agent_ids], dtype=bool)
-        done_flag = dones.any()
+        done_flag = dones.any()  # True if any agent is done
         infos = [info_dict[aid] for aid in self.agent_ids]
 
         return obs, rewards, done_flag, infos
 
     def close(self):
+        """
+        Close the underlying environment if it has a close method.
+        """
         if hasattr(self.rlgym_env, "close"):
             self.rlgym_env.close()
 
