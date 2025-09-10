@@ -43,10 +43,10 @@ def build_rlgym_v2_env():
     )
 
     reward_fn = CombinedReward(
-        (InAirReward(), 0.002),
-        (SpeedTowardBallReward(), 0.01),
-        (VelocityBallToGoalReward(), 0.1),
-        (GoalReward(), 10.0)
+        (InAirReward(), 0.00),
+        (SpeedTowardBallReward(), 0.1),
+        (VelocityBallToGoalReward(), 0.05),
+        (GoalReward(), 100.0)
     )
 
     obs_builder = RichObsBuilder()
@@ -75,8 +75,11 @@ def build_rlgym_v2_env():
 
 if __name__ == "__main__":
     from rlgym_ppo import Learner
+    import numpy as np
 
-    n_proc = 15
+
+
+    n_proc = 20
     min_inference_size = max(1, int(round(n_proc * 0.9)))
 
     learner = Learner(
@@ -90,15 +93,19 @@ if __name__ == "__main__":
         ts_per_iteration=100_000,
         exp_buffer_size=300_000,
         ppo_minibatch_size=50_000,
-        ppo_ent_coef=0.5,
-        policy_lr=1e-4,
-        critic_lr=1e-4,
+        ppo_ent_coef=0.01,
+        policy_lr=1e-5,
+        critic_lr=1e-5,
         ppo_epochs=2,
         standardize_returns=True,
-        standardize_obs=False,
+        standardize_obs=True,
         save_every_ts=1_000_000,
         timestep_limit=1_000_000_000,
         log_to_wandb=True
+
+
+
+
     )
 
     try:

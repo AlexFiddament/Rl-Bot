@@ -180,18 +180,17 @@ class RichObsBuilder(ObsBuilder):
 
 
 class ContinuousRLGymWrapper:
-    """
-    Wraps an RLGymV2 environment for continuous actions and PPO usage.
-    Exposes proper observation_space and action_space for SB3/RLlib.
-    """
-    def __init__(self, rlgym_env):
+
+    def __init__(self, rlgym_env, obs_normalizer=None):
+        super().__init__()
         self.rlgym_env = rlgym_env
+        self.obs_normalizer = obs_normalizer  # Optional normalizer
 
-        # Reset environment to get an example observation
-        obs_example = list(self.rlgym_env.reset().values())[0]  # take first agent
-        self.num_agents = len(self.rlgym_env.reward_fn.reward_fns)  # approximate, or just len(obs_dict)
+        obs_dict = self.rlgym_env.reset()
+        self.agent_ids = list(obs_dict.keys())
+        self.num_agents = len(self.agent_ids)
+        obs_example = list(obs_dict.values())[0]
 
-        # Observation space: assume all agents have the same shape
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
@@ -199,7 +198,6 @@ class ContinuousRLGymWrapper:
             dtype=np.float32
         )
 
-        # Action space: 8 continuous actions per agent
         self.action_space = spaces.Box(
             low=-1.0,
             high=1.0,
@@ -208,35 +206,51 @@ class ContinuousRLGymWrapper:
         )
 
     def reset(self):
-        """
-        Reset the environment and return a stacked array of observations for all agents.
-        """
-        obs_dict = self.rlgym_env.reset()  # dict: agent_id -> obs
+        obs_dict = self.rlgym_env.reset()
         self.agent_ids = list(obs_dict.keys())
-        return np.array([obs_dict[aid] for aid in self.agent_ids], dtype=np.float32)
+        obs = np.array([obs_dict[aid] for aid in self.agent_ids], dtype=np.float32)
+
+
+
+        return obs
 
     def step(self, actions):
-        """
-        Take a step in the environment.
-        `actions` is expected to be shape (num_agents, 8)
-        """
-        action_dict = {aid: actions[i] for i, aid in enumerate(self.agent_ids)}
+        action_dict = {aid: np.clip(actions[i], -1, 1) for i, aid in enumerate(self.agent_ids)}
         obs_dict, reward_dict, done_dict, info_dict = self.rlgym_env.step(action_dict)
-
         obs = np.array([obs_dict[aid] for aid in self.agent_ids], dtype=np.float32)
+
+
+
         rewards = np.array([reward_dict[aid] for aid in self.agent_ids], dtype=np.float32)
         dones = np.array([done_dict[aid] for aid in self.agent_ids], dtype=bool)
-        done_flag = dones.any()  # True if any agent is done
+        done_flag = dones.any()
         infos = [info_dict[aid] for aid in self.agent_ids]
 
         return obs, rewards, done_flag, infos
 
+    def _print_normalized_obs(self, obs, name):
+        try:
+            if self.obs_normalizer:
+                norm_obs = self.obs_normalizer(obs)
+            else:
+                # fallback normalization: zero-mean, unit-std per batch
+                norm_obs = (obs - np.mean(obs)) / (np.std(obs) + 1e-8)
+
+            norm_obs = np.nan_to_num(norm_obs, nan=0.0, posinf=0.0, neginf=0.0)  # replace NaNs/Infs
+            print(
+                f"{name} stats -> min: {norm_obs.min():.3f}, "
+                f"max: {norm_obs.max():.3f}, mean: {norm_obs.mean():.3f}, std: {norm_obs.std():.3f}"
+            )
+        except Exception as e:
+            print(f"⚠️ Failed to normalize obs: {e}")
+
     def close(self):
-        """
-        Close the underlying environment if it has a close method.
-        """
         if hasattr(self.rlgym_env, "close"):
             self.rlgym_env.close()
+
+
+
+
 
 
 

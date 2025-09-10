@@ -1,0 +1,40 @@
+{
+  "os":  "Windows-10-10.0.26100-SP0",
+  "python":  "CPython 3.11.9",
+  "startedAt":  "2025-09-10T02:15:35.101073Z",
+  "program":  "C:\\Users\\alexf\\Documents\\PythonProjects\\PythonProject\\Main.py",
+  "codePath":  "Main.py",
+  "codePathLocal":  "Main.py",
+  "git":  {
+    "remote":  "https://github.com/AlexFiddament/Rl-Bot.git",
+    "commit":  "167708629d48481beb4e7164ba8c9ded3282e261"
+  },
+  "email":  "alexfiddament@hotmail.co.uk",
+  "root":  "C:\\Users\\alexf\\Documents\\PythonProjects\\PythonProject",
+  "host":  "DESKTOP-I37B5TB",
+  "executable":  "C:\\Program Files\\Python311\\python.exe",
+  "cpu_count":  12,
+  "cpu_count_logical":  24,
+  "gpu":  "NVIDIA GeForce RTX 3080 Ti",
+  "gpu_count":  1,
+  "disk":  {
+    "/":  {
+      "total":  "998312505344",
+      "used":  "948232540160"
+    }
+  },
+  "memory":  {
+    "total":  "17101111296"
+  },
+  "gpu_nvidia":  [
+    {
+      "name":  "NVIDIA GeForce RTX 3080 Ti",
+      "memoryTotal":  "12884901888",
+      "cudaCores":  10240,
+      "architecture":  "Ampere",
+      "uuid":  "GPU-e78abcbb-9a56-fa8b-1a60-073461fe3a5b"
+    }
+  ],
+  "cudaVersion":  "13.0",
+  "writerId":  "njxnqon55psrx0vau9ri3ccyr2v4dpis"
+}
